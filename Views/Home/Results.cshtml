@@ -1,0 +1,12 @@
+﻿
+@{
+    ViewData["Title"] = "Search Results";
+}
+
+<h1>@ViewData["Title"]</h1>
+<ul>
+    @foreach (var item in ViewData["TitleList"] as IList<string>)
+    {
+        <li>@item</li>
+    }
+</ul>
