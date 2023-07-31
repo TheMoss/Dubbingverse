@@ -3,10 +3,13 @@
     ViewData["Title"] = "Search Results";
 }
 
+
 <h1>@ViewData["Title"]</h1>
-<ul>
-    @foreach (var item in ViewData["TitleList"] as IList<string>)
+<ul class="results-list">
+    @foreach (var movie in ViewData["MoviesList"] as IList<MovieModel>)
     {
-        <li>@item</li>
+		<li class="list-item">
+            <a href="/Home/GetMovieInformation?pageId=@movie.PageID">@movie.Title</a>
+            </li>
     }
 </ul>
