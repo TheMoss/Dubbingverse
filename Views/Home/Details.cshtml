@@ -1,0 +1,16 @@
+﻿
+<h1>@ViewData["MovieTitle"]</h1>
+<p class="description">@ViewData["ShortDescription"]</p>
+<ul class="results-list">
+	@foreach (var actor in ViewData["ActorsAndCharactersList"] as IList<ActorModel>)
+	{
+		<li class= "list-item" style="font-size:15px">
+			<span>
+				@foreach (var character in actor.CharactersList)
+				{
+					@(character + " ")
+				}- @actor.ActorName
+			</span>
+		</li>
+	}
+</ul>
