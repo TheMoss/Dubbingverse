@@ -5,7 +5,7 @@
 
 
 <h1>@ViewData["Title"]</h1>
-<ul class="results-list">
+<ul class="results-list" id="movies">
     @foreach (var movie in ViewData["MoviesList"] as IList<MovieModel>)
     {
 		<li class="list-item">

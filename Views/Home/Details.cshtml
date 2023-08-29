@@ -9,7 +9,7 @@
 				@foreach (var character in actor.CharactersList)
 				{
 					@(character + " ")
-				}- @actor.ActorName
+				}- <a href="/Home/GetActorRoles?actorName=@actor.ActorName">@actor.ActorName</a>
 			</span>
 		</li>
 	}
