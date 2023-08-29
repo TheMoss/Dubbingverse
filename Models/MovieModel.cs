@@ -5,10 +5,8 @@
         public string Title { get; set; }
         public int PageID { get; set; }
 
-        public MovieModel(string title, int pageId)
-        {
-            Title = title;
-            PageID = pageId;
-        }
+        public List<ActorModel> ActorsAndCharacters { get; set; }
+
+        public string ShortDescription { get;set; }
     }
 }
