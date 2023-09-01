@@ -1,13 +1,9 @@
 ﻿using Dubbingverse.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using System.Xml.XPath;
 
 namespace Dubbingverse.Controllers
@@ -17,9 +13,7 @@ namespace Dubbingverse.Controllers
 		private readonly ILogger<HomeController> _logger;
 		private readonly HttpClient _httpClient = new HttpClient();
 		public List<MovieModel> MoviesList { get; set; }
-		public string MovieTitle { get; set; }
-		public string ShortDescription { get; set; } = "Opis niedostępny";
-		public List<ActorModel> ActorsAndCharactersList { get; set; } = new List<ActorModel>();
+
 
 		public HomeController(ILogger<HomeController> logger)
 		{
@@ -50,17 +44,19 @@ namespace Dubbingverse.Controllers
 		[HttpGet]
 		public async Task<IActionResult> GetMovies(string searchedMovie)
 		{
-
 			string url = $"https://dubbingpedia.pl/w/api.php?action=query&list=search&srsearch={searchedMovie}&prop=links&format=json";
 			var response = await _httpClient.GetStringAsync(url);
 			var results = JsonSerializer.Deserialize<SearchResultsModel>(response);
 			for (int i = 0; i < results.query.search.Count(); i++)
 			{
-				MoviesList.Add(new MovieModel(results.query.search[i].title, results.query.search[i].pageid));
+				MoviesList.Add(new MovieModel()
+				{
+					Title = results.query.search[i].title,
+					PageID = results.query.search[i].pageid
+				});
 			}
 			ViewData["MoviesList"] = MoviesList;
 			return View("Results");
-
 		}
 		public string MatchPageText(string httpResponse)
 		{
@@ -85,7 +81,6 @@ namespace Dubbingverse.Controllers
 			string charactersExpression = "../..//b/text()";
 
 			XPathNodeIterator nodes = navigator.Select(actorsExpression);
-
 
 			List<ActorModel> actorsList = new List<ActorModel>();
 			while (nodes.MoveNext())
@@ -119,20 +114,72 @@ namespace Dubbingverse.Controllers
 
 		public async Task<IActionResult> GetMovieInformation(int pageId)
 		{
+			MovieModel yourMovie = new MovieModel();
+
 			string url = $"https://dubbingpedia.pl/w/api.php?action=parse&format=json&pageid={pageId}";
 			string httpResponse = await _httpClient.GetStringAsync(url);
-			MovieTitle = MatchMovieTitle(httpResponse);
+			yourMovie.Title = MatchMovieTitle(httpResponse);
 			byte[] byteArray = Encoding.UTF8.GetBytes(Regex.Unescape(MatchPageText(httpResponse)));//extract just the parsed page
 			MemoryStream stream = new MemoryStream(byteArray);
 			var doc = new XPathDocument(stream);
 			var navigator = doc.CreateNavigator();
-			ActorsAndCharactersList = CreateActorsAndCharactersList(navigator);//select actors, characters and the description
-			ShortDescription = GetShortDescription(navigator);
+			yourMovie.ActorsAndCharacters = CreateActorsAndCharactersList(navigator);//select actors, characters and the description
+			yourMovie.ShortDescription = GetShortDescription(navigator);
 
-			ViewData["MovieTitle"] = MovieTitle;
-			ViewData["ShortDescription"] = ShortDescription;
-			ViewData["ActorsAndCharactersList"] = ActorsAndCharactersList;
+			ViewData["MovieTitle"] = yourMovie.Title;
+			ViewData["ShortDescription"] = yourMovie.ShortDescription;
+			ViewData["ActorsAndCharactersList"] = yourMovie.ActorsAndCharacters;
 			return View("Details");
-		}		
+		}
+
+		public async Task<IActionResult> GetActorInformation(string actorName)
+		{
+			string url = $"https://dubbingpedia.pl/w/api.php?action=query&list=search&srsearch={actorName}&prop=links&format=json";
+
+			var response = await _httpClient.GetStringAsync(url);
+			var results = JsonSerializer.Deserialize<SearchResultsModel>(response);
+			var actorId = results.query.search[0].pageid.ToString();
+			string actorUrl = $"https://dubbingpedia.pl/w/api.php?action=parse&format=json&pageid={actorId}";
+
+			string httpResponse = await _httpClient.GetStringAsync(actorUrl);//match page and parse
+			byte[] byteArray = Encoding.UTF8.GetBytes(Regex.Unescape(MatchPageText(httpResponse)));//extract just the parsed page
+			MemoryStream stream = new MemoryStream(byteArray);
+			var doc = new XPathDocument(stream);
+			var navigator = doc.CreateNavigator();
+
+			ActorModel actor = new ActorModel(actorName);
+
+			ViewData["ActorName"] = actor.ActorName;
+
+			GetAllMovies(navigator, actor);
+			ViewData["ActorRolesList"] = actor.CharactersList;
+
+			return View("Actor");
+		}
+
+
+		public ActorModel GetAllMovies(XPathNavigator navigator, ActorModel actor)
+		{
+			string actorMoviesParagraphExpression = "//span[@id=\"Filmy\"]/following::ul[1]";
+			string actorMoviesExpression = "//span[@id=\"Filmy\"]/following::ul[1]/li";
+
+			var movies = navigator.Select(actorMoviesParagraphExpression);//finds movies in paragraph
+
+
+			while (movies.MoveNext())
+			{
+				XPathNavigator movieNavigator = movies.Current.Clone();
+
+				XPathNodeIterator movieNodes = movieNavigator.Select(actorMoviesExpression);
+
+
+				while (movieNodes.MoveNext())
+				{
+					actor.CharactersList.Add(movieNodes.Current.Value);
+				}
+
+			}
+			return actor;
+		}
 	}
 }
